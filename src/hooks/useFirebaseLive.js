@@ -4,7 +4,6 @@ import { db } from '../firebase/firebaseConfig';
 
 export const useFirebaseLive = (deviceId) => {
   const [notifications, setNotifications] = useState([]);
-  const [clipboardLogs, setClipboardLogs] = useState([]);
   const [deviceStatus, setDeviceStatus] = useState('offline');
   const [error, setError] = useState(null);
 
@@ -13,12 +12,10 @@ export const useFirebaseLive = (deviceId) => {
     
     // Clear old data when device changes
     setNotifications([]);
-    setClipboardLogs([]);
     setError(null);
 
     try {
       const notifRef = ref(db, `logs/${deviceId}/notifications`);
-      const clipRef = ref(db, `logs/${deviceId}/clipboard`);
       const statusRef = ref(db, `devices/${deviceId}/status`); // Or adjust path accordingly
 
       // We use onChildAdded to instantly pop new data to the top
@@ -33,15 +30,6 @@ export const useFirebaseLive = (deviceId) => {
         });
       }, (err) => setError(err.message));
 
-      const clipQuery = query(clipRef, limitToLast(50));
-      const unsubClip = onChildAdded(clipQuery, (snapshot) => {
-        const data = snapshot.val();
-        setClipboardLogs((prev) => {
-          if (prev.find((c) => c.id === snapshot.key)) return prev;
-          return [{ id: snapshot.key, ...data }, ...prev];
-        });
-      }, (err) => setError(err.message));
-
       // Quick listener for device live status
       const unsubStatus = onValue(statusRef, (snapshot) => {
         const val = snapshot.val();
@@ -50,7 +38,6 @@ export const useFirebaseLive = (deviceId) => {
 
       return () => {
          unsubNotif();
-         unsubClip();
          unsubStatus();
       };
     } catch (e) {
@@ -58,5 +45,5 @@ export const useFirebaseLive = (deviceId) => {
     }
   }, [deviceId]);
 
-  return { notifications, clipboardLogs, deviceStatus, error };
+  return { notifications, deviceStatus, error };
 };
