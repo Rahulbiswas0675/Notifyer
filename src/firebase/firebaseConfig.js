@@ -2,13 +2,14 @@ import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "YOUR_API_KEY",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "YOUR_AUTH_DOMAIN",
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "YOUR_DATABASE_URL",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "YOUR_STORAGE_BUCKET",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "YOUR_APP_ID"
+  apiKey: "AIzaSyC6YhGsA1K1taKIvgv0th-S6DwaSIDT4GE",
+  authDomain: "think-big-f8c31.firebaseapp.com",
+  databaseURL: "https://think-big-f8c31-default-rtdb.firebaseio.com",
+  projectId: "think-big-f8c31",
+  storageBucket: "think-big-f8c31.firebasestorage.app",
+  messagingSenderId: "85344977465",
+  appId: "1:85344977465:web:6f6a8378893b8075e9c3e8",
+  measurementId: "G-G5BKY01KT9"
 };
 
 const app = initializeApp(firebaseConfig);
