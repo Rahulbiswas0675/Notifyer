@@ -10,11 +10,11 @@ export const DeviceSidebar = ({ devices, selectedDeviceId, onSelectDevice, onLog
           <Cpu className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="font-bold text-lg text-white tracking-widest leading-none">Notify</h1>
+          <h1 className="font-bold text-lg text-white tracking-widest leading-none">Zondra-Sync</h1>
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 block">Data Node: 0x42A</span>
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-4 space-y-8">
         <section>
           <div className="flex items-center justify-between mb-4 px-2">
@@ -26,7 +26,7 @@ export const DeviceSidebar = ({ devices, selectedDeviceId, onSelectDevice, onLog
               [{devices.length}]
             </span>
           </div>
-          
+
           <div className="space-y-1">
             {devices.map((device) => (
               <button
@@ -34,8 +34,8 @@ export const DeviceSidebar = ({ devices, selectedDeviceId, onSelectDevice, onLog
                 onClick={() => onSelectDevice(device.id)}
                 className={clsx(
                   "w-full group flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all duration-300 relative overflow-hidden",
-                  selectedDeviceId === device.id 
-                    ? "bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/30" 
+                  selectedDeviceId === device.id
+                    ? "bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/30"
                     : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 )}
               >
@@ -96,7 +96,7 @@ export const DeviceSidebar = ({ devices, selectedDeviceId, onSelectDevice, onLog
             <p className="text-[9px] text-slate-500 font-mono truncate">Status: Authenticated</p>
           </div>
         </div>
-        
+
         <button
           onClick={onLogout}
           className="w-full group flex items-center justify-center gap-2 py-3 rounded-lg border border-red-900/30 bg-red-950/20 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg shadow-red-950/20"

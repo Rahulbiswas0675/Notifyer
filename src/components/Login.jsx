@@ -19,7 +19,7 @@ export const Login = ({ onLogin }) => {
     <div className="min-h-screen flex items-center justify-center bg-[#020617] p-6 relative overflow-hidden font-mono">
       {/* CRT Scanline Effect */}
       <div className="scanline opacity-30"></div>
-      
+
       {/* Ambient Cyber Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-[120px]"></div>
 
@@ -29,7 +29,7 @@ export const Login = ({ onLogin }) => {
             <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/40 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.2)] mb-6 animate-pulse">
               <ShieldCheck className="w-8 h-8 text-emerald-500" />
             </div>
-            <h1 className="text-3xl font-black text-white tracking-[0.2em] mb-2 uppercase">Notifyer</h1>
+            <h1 className="text-3xl font-black text-white mb-2">Zondra-Sync</h1>
             <div className="flex items-center gap-2 text-[10px] text-emerald-500/70 uppercase tracking-widest font-bold">
               <Terminal className="w-3 h-3" />
               Secure Terminal Protocol
@@ -74,9 +74,9 @@ export const Login = ({ onLogin }) => {
               Node_ID: 0x9F2E-SYMB
             </p>
             <div className="flex gap-1">
-               <span className="w-1 h-1 bg-emerald-500/30 rounded-full"></span>
-               <span className="w-1 h-1 bg-emerald-500/30 rounded-full animate-bounce delay-75"></span>
-               <span className="w-1 h-1 bg-emerald-500/30 rounded-full animate-bounce delay-150"></span>
+              <span className="w-1 h-1 bg-emerald-500/30 rounded-full"></span>
+              <span className="w-1 h-1 bg-emerald-500/30 rounded-full animate-bounce delay-75"></span>
+              <span className="w-1 h-1 bg-emerald-500/30 rounded-full animate-bounce delay-150"></span>
             </div>
           </div>
         </div>
