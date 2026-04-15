@@ -117,30 +117,38 @@ export const useDecryptedFirebase = (deviceId, path, options = {}) => {
         return () => unsub();
       }
 
-      // List mode via onChildAdded
+      // List mode via onValue for full sync (handles deletions)
       const q = query(dbRef, limitToLast(limit));
       
-      const unsub = onChildAdded(q, async (snapshot) => {
+      const unsub = onValue(q, async (snapshot) => {
         const val = snapshot.val();
-        const processed = await decryptPayloads(val);
-        const item = { id: snapshot.key, ...processed };
+        if (!val) {
+          setData([]);
+          setLoading(false);
+          return;
+        }
+
+        // snapshot.val() returns an object with random keys, 
+        // we need to process each child and maintain order
+        const items = [];
+        const entries = Object.entries(val);
         
-        setData(prev => {
-          if (prev.find(n => n.id === snapshot.key)) return prev;
-          return [item, ...prev];
-        });
+        // Sort entries by key (Firebase keys are chronological) in reverse
+        entries.sort((a, b) => b[0].localeCompare(a[0]));
+
+        for (const [key, itemVal] of entries) {
+          const processed = await decryptPayloads(itemVal);
+          items.push({ id: key, ...processed });
+        }
+        
+        setData(items);
         setLoading(false);
       }, (err) => {
         setError(err.message);
         setLoading(false);
       });
 
-      const timeout = setTimeout(() => setLoading(false), 3000);
-
-      return () => {
-        unsub();
-        clearTimeout(timeout);
-      };
+      return () => unsub();
     } catch (e) {
       setError(e.message);
       setLoading(false);

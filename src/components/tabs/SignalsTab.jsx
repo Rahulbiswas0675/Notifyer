@@ -29,7 +29,7 @@ export const SignalsTab = ({ deviceId, searchTerm, onDelete }) => {
               <Zap className="w-5 h-5 lg:w-7 lg:h-7 text-red-600" />
             </div>
             <div>
-              <h2 className="text-sm lg:text-lg font-black text-white uppercase tracking-[0.1em]">Notifications</h2>
+              <h2 className="text-sm lg:text-lg font-black text-white uppercase tracking-[0.1em]">Signals</h2>
               <p className="text-[8px] lg:text-xs text-zinc-500 font-bold mt-1 uppercase tracking-widest">Live Activity Stream</p>
             </div>
           </div>

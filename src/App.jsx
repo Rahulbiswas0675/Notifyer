@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ref, onValue, update, remove } from 'firebase/database';
+import { ref, onValue, update, remove, query, limitToLast } from 'firebase/database';
 import { db } from './firebase/firebaseConfig';
 import { Layout } from './components/Layout';
 import { DeviceSidebar } from './components/DeviceSidebar';
 import { DashboardFeed } from './components/DashboardFeed';
 import { Login } from './components/Login';
-import { List, Phone, Map, Search, Trash2, Menu } from 'lucide-react';
+import { List, Phone, Map, Search, Trash2, Menu, Clock } from 'lucide-react';
 import clsx from 'clsx';
 
 function App() {
@@ -16,11 +16,13 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('notifications');
   const [searchTerm, setSearchTerm] = useState('');
+  const [unseenCount, setUnseenCount] = useState(0);
+  const [lastSeenTime, setLastSeenTime] = useState(() => {
+    return parseInt(localStorage.getItem('lastSeenTime') || Date.now());
+  });
 
   const tabs = [
-    { id: 'notifications', label: 'Notifications', icon: List, path: 'notifications' },
-    { id: 'calls', label: 'Call History', icon: Phone, path: 'calls' },
-    { id: 'location', label: 'GPS Location', icon: Map, path: 'location' },
+    { id: 'notifications', label: 'Signals', icon: List, path: 'notifications' },
   ];
 
   const currentTab = tabs.find(t => t.id === activeTab);
@@ -48,6 +50,41 @@ function App() {
 
     return () => unsub();
   }, [selectedDeviceId]);
+
+  // Track unseen notifications
+  useEffect(() => {
+    if (!selectedDeviceId) return;
+
+    const notificationsRef = ref(db, `logs/${selectedDeviceId}/notifications`);
+    const q = query(notificationsRef, limitToLast(20)); // Monitor recent ones
+
+    const unsub = onValue(q, (snapshot) => {
+      if (activeTab === 'notifications') {
+        setUnseenCount(0);
+        const now = Date.now();
+        setLastSeenTime(now);
+        localStorage.setItem('lastSeenTime', now);
+        return;
+      }
+
+      const data = snapshot.val();
+      if (data) {
+        const newItems = Object.values(data).filter(item => item.timestamp > lastSeenTime);
+        setUnseenCount(newItems.length);
+      }
+    });
+
+    return () => unsub();
+  }, [selectedDeviceId, activeTab, lastSeenTime]);
+
+  useEffect(() => {
+    if (activeTab === 'notifications' && unseenCount > 0) {
+      setUnseenCount(0);
+      const now = Date.now();
+      setLastSeenTime(now);
+      localStorage.setItem('lastSeenTime', now);
+    }
+  }, [activeTab, unseenCount]);
 
   const handleRenameDevice = async (deviceId, newName) => {
     try {
@@ -132,7 +169,7 @@ function App() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={clsx(
-                    "flex items-center gap-1.5 lg:gap-2 px-3 lg:px-5 py-1.5 lg:py-2 text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] transition-all whitespace-nowrap",
+                    "flex items-center gap-1.5 lg:gap-2 px-3 lg:px-5 py-1.5 lg:py-2 text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] transition-all whitespace-nowrap relative",
                     activeTab === tab.id
                       ? "bg-red-600 text-white shadow-lg"
                       : "text-zinc-600 hover:text-zinc-200"
@@ -141,6 +178,15 @@ function App() {
                   <tab.icon className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                   <span className="hidden xs:inline">{tab.label}</span>
                   <span className="xs:hidden">{tab.id.charAt(0)}</span>
+                  
+                  {tab.id === 'notifications' && unseenCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-700 text-[8px] items-center justify-center font-bold border border-black shadow-lg">
+                        {unseenCount > 9 ? '9+' : unseenCount}
+                      </span>
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

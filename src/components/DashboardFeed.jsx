@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Trash2, List, Phone, Map } from 'lucide-react';
 import { SignalsTab } from './tabs/SignalsTab';
-import { CallsTab } from './tabs/CallsTab';
-import { GPSTab } from './tabs/GPSTab';
 import clsx from 'clsx';
 
 export const DashboardFeed = ({ deviceId, activeTab, searchTerm, onDeleteLog }) => {
@@ -24,14 +22,6 @@ export const DashboardFeed = ({ deviceId, activeTab, searchTerm, onDeleteLog }) 
                 onDelete={(logId) => onDeleteLog(deviceId, 'notifications', logId)}
               />
             )}
-            {activeTab === 'calls' && (
-              <CallsTab
-                deviceId={deviceId}
-                searchTerm={searchTerm}
-                onDelete={(logId) => onDeleteLog(deviceId, 'calls', logId)}
-              />
-            )}
-            {activeTab === 'location' && <GPSTab deviceId={deviceId} />}
           </div>
         )}
       </div>
